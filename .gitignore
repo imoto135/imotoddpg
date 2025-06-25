@@ -1,0 +1,46 @@
+.venv/data/large_dataset.csv
+models/checkpoint.pth
+models/
+exp/
+dataset_RGBcharacter.zip
+dataset_RGBcharacter/
+*.pth
+makura/
+makura2/
+makura1/
+*.pyc
+__pycache__/
+*.log
+*.json
+*.txt
+*.csv
+*.db
+*.sqlite
+*.tar.gz
+*.zip
+makura1pretreat/
+makura2pretreat/
+alldataset/alldataset/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# anaconda/venv
+.ipynb_checkpoints
+venv/
+
+# モデルの重みファイル
+*.pth
+*.pt
+*.ckpt
+
+# データ・マスク出力フォルダ
+data/
+dataset/
+makura/
+mask_output/
+
+# その他
+.DS_Store
