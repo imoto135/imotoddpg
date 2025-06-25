@@ -52,8 +52,8 @@ def generate_masks(image_path: str, stain_mask_output_path: str, text_mask_outpu
     # 2. 適応的二値化を適用して文字を抽出
     # blockSize: 閾値を計算するための近傍領域のサイズ（奇数である必要あり）
     # C: 計算された閾値から引く定数。値を大きくすると黒い部分が減る（文字が細くなる）
-    block_size = 11
-    C = 5
+    block_size = 5
+    C = 10
     final_text_mask = cv2.adaptiveThreshold(gray_image, 
                                             255, # 最大値
                                             cv2.ADAPTIVE_THRESH_GAUSSIAN_C, # 閾値の計算方法
@@ -70,8 +70,9 @@ def generate_masks(image_path: str, stain_mask_output_path: str, text_mask_outpu
 
 if __name__ == '__main__':
     # --- ここを編集してください ---
-    INPUT_IMAGE_PATH = "/home/ihpc/SSD/imoto/imotoddpg/makura/image/200017197_00008.jpg"
-    OUTPUT_DIR = "/home/ihpc/SSD/imoto/imotoddpg/mask_output/"
+    # INPUT_IMAGE_PATH = "/home/ihpc/SSD/imoto/imotoddpg/makura/image/200017197_00008.jpg"
+    INPUT_IMAGE_PATH = r"C:\Users\yuuit\myproject\imotoddpg\200017197_00008.jpg"
+    OUTPUT_DIR = r"C:\Users\yuuit\myproject\imotoddpg\mask_output"
     # -------------------------
 
     # --- ファイル名を自動生成 ---

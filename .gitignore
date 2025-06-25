@@ -26,6 +26,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+mask_output
 
 # anaconda/venv
 .ipynb_checkpoints

@@ -27,7 +27,7 @@ class StainRemovalOperator:
         
         # シミの部分を0, それ以外を1とする。
         # 画像処理ソフトでシミを黒(0), 背景を白(255)で作成することを想定。
-        self.mask = (mask > 0.5).float().to(device)
+        self.mask = (mask < 0.5).float().to(device)
         self.mask_flat = self.mask.view(-1) # 1次元に展開したマスク
 
     def A(self, x):

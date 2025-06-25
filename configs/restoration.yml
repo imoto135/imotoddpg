@@ -1,5 +1,5 @@
 data:
-    dataset: "dataset_RGBcharacter"
+    dataset: "makura/image/*.jpg"
     category: ""
     image_size: 256
     channels: 3

@@ -127,8 +127,10 @@ def process_images(input_pattern, output_dir, density=3e-4, intensity=1.0, seed=
 if __name__ == '__main__':
 	# 実行時のパラメータ設定
 	process_images(
-		input_pattern="/home/ihpc/anaconda3/envs/imoto/imotoddpg/makura/image/*.jpg",
-		output_dir="/home/ihpc/anaconda3/envs/imoto/imotoddpg/makura1",
+		# input_pattern="/home/ihpc/anaconda3/envs/imoto/imotoddpg/makura/image/*.jpg",
+		input_pattern=r"C:\Users\yuuit\myproject\imotoddpg\200017197_00008.jpg",
+		# output_dir="/home/ihpc/anaconda3/envs/imoto/imotoddpg/makura1",
+		output_dir=r"C:\Users\yuuit\myproject\imotoddpg\stain_makura",
 		density=1e-4, 	# 汚れの密度
 		intensity=0.5, 	# 汚れの濃さ (0.0-1.0)
 		seed=12345

@@ -37,7 +37,7 @@ def parse_args_and_config():
         "--path_y",
         type=str,
         #required=True,
-        default='/home/ihpc/SSD/imoto/imotoddpg/makura1pretreat/200017197_00009/page_resize.png', # e.g.,  celeba_hq, imagenet
+        default='makura1pretreat/200017197_00009/page_resize.png', # e.g.,  celeba_hq, imagenet
         help="Path of the test dataset.",
     )
     parser.add_argument(
