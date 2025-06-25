@@ -44,3 +44,7 @@ mask_output/
 
 # その他
 .DS_Store
+
+makura1pretreat/
+makura2pretreat/
+alldataset/
