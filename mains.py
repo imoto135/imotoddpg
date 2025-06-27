@@ -103,7 +103,7 @@ def parse_args_and_config():
     args = parser.parse_args()
 
     # parse config file
-    with open(os.path.join("configs", args.config), "r") as f:
+    with open(os.path.join("configs", args.config), "r", encoding='utf-8') as f:
         config = yaml.safe_load(f)
     new_config = dict2namespace(config)
 

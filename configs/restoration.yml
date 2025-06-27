@@ -1,37 +1,40 @@
+# 以下の内容で restoration.yml を完全に上書きしてください
+
+# データセットに関する設定
 data:
-    dataset: "makura/image/*.jpg"
-    category: ""
-    image_size: 256
-    channels: 3
-    logit_transform: false
-    uniform_dequantization:
-    gaussian_dequantization: false
-    random_flip: true
-    rescaled: true
-    num_workers: 32
-    out_of_dist: false
-
+  dataset: "CUSTOM" # データセット名は 'CUSTOM' など任意の名前でOK
+  image_size: 64    # 学習時と一致させる
+  channels: 3
+  num_workers: 0    # サーバーの環境に応じて調整
+  
+# モデルに関する設定 (学習時と完全に一致させる)
 model:
-    model_path: "/home/ihpc/SSD/imoto/imotoddpg/checkpoint_epoch_200.pth"
-    type: "simple"
-    in_channels: 3
-    out_ch: 3
-    ch: 128
-    ch_mult: [1, 1, 2, 2, 4, 4]
-    num_res_blocks: 2
-    attn_resolutions: [16, ]
-    dropout: 0.0
-    var_type: fixedsmall
-    ema_rate: 0.999
-    ema: True
-    resamp_with_conv: True
+  # ★★★ このセクションが最も重要です ★★★
+  
+  # 学習済みモデルのパス
+  model_path: "checkpoints\\checkpoint_epoch_200.pth" # Windowsの場合は "checkpoints\\checkpoint_epoch_200.pth"
 
+  # unet.UNetModelが必要とするパラメータ
+  in_channels: 3
+  out_channels: 3
+  model_channels: 64      # 学習時の設定
+  num_res_blocks: 4       # 学習時の設定
+  attention_resolutions:  # YMLのリスト形式
+    - 16
+    - 8
+  
+  # diffusion.pyが必要とするパラメータ
+  var_type: 'fixedsmall' # 学習時の 'FIXED_SMALL' に対応
+  num_classes: 3686      # 学習時のクラス数
+
+# Diffusionプロセスに関する設定
 diffusion:
-    beta_schedule: linear 
-    beta_start: 0.0001 
-    beta_end: 0.02 
-    num_diffusion_timesteps: 1000
+  beta_schedule: linear   # 学習時の設定に合わせて 'cosine' でも可
+  beta_start: 0.0001
+  beta_end: 0.02
+  num_diffusion_timesteps: 1000
 
+# 推論（サンプリング）に関する設定
 sampling:
-    batch_size: 1
-    T_sampling: 100 
+  batch_size: 1
+  T_sampling: 100
