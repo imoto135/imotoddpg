@@ -1,18 +1,28 @@
 # 以下の内容で restoration.yml を完全に上書きしてください
 
 # データセットに関する設定
+# restoration.yml の data: セクションを、以下の内容に置き換えてください
 data:
-  dataset: "CUSTOM" # データセット名は 'CUSTOM' など任意の名前でOK
-  image_size: 64    # 学習時と一致させる
-  channels: 3
-  num_workers: 0    # サーバーの環境に応じて調整
+  dataset: "CUSTOM"
+  image_size: 64      # 学習時と一致させた正しい値
+  channels: 3         # 学習時と一致させた正しい値
+  num_workers: 0      # ご自身の環境に合わせてください
+  
+  # --- ▼▼▼ 以下、不足していた項目を追加 ▼▼▼ ---
+  category: ""
+  logit_transform: false
+  uniform_dequantization: false
+  gaussian_dequantization: false
+  random_flip: false  # 推論時には通常False（反転させない）に設定します
+  rescaled: true
+  out_of_dist: false
   
 # モデルに関する設定 (学習時と完全に一致させる)
 model:
   # ★★★ このセクションが最も重要です ★★★
   
   # 学習済みモデルのパス
-  model_path: "checkpoints\\checkpoint_epoch_200.pth" # Windowsの場合は "checkpoints\\checkpoint_epoch_200.pth"
+  model_path: "checkpoints/checkpoint_epoch_200.pth" # Windowsの場合は "checkpoints\\checkpoint_epoch_200.pth"
 
   # unet.UNetModelが必要とするパラメータ
   in_channels: 3
@@ -25,7 +35,7 @@ model:
   
   # diffusion.pyが必要とするパラメータ
   var_type: 'fixedsmall' # 学習時の 'FIXED_SMALL' に対応
-  num_classes: 3686      # 学習時のクラス数
+#   num_classes: 3686      # 学習時のクラス数
 
 # Diffusionプロセスに関する設定
 diffusion:

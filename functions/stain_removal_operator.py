@@ -1,5 +1,3 @@
-# functions/stain_removal_operator.py
-
 import torch
 import numpy as np
 from PIL import Image
@@ -7,61 +5,54 @@ from PIL import Image
 class StainRemovalOperator:
     """
     シミ除去タスクのためのOperatorクラス。
-    シミの領域をマスクとして扱い、インペインティング問題として解く。
+    平坦化されたテンソルを受け取り、内部で4D画像に復元して処理する。
     """
-    def __init__(self, device, image_size, mask_path='masks/stain_mask.png'):
+    def __init__(self, device, image_size, channels, mask_path='masks/stain_mask.png'):
         """
         コンストラクタ
 
         Args:
             device: 使用するデバイス (e.g., 'cuda')
-            image_size (int): 画像のサイズ (e.g., 256)
+            image_size (int): 画像のサイズ (e.g., 64)
+            channels (int): 画像のチャンネル数 (e.g., 3)
             mask_path (str): シミの領域を示すマスク画像のパス
         """
         self.device = device
+        self.image_size = image_size
+        self.channels = channels
         
-        # マスク画像を読み込み、前処理を行う
-        mask = Image.open(mask_path).convert('L') # グレースケールで読み込み
+        mask = Image.open(mask_path).convert('L')
         mask = mask.resize((image_size, image_size), Image.Resampling.LANCZOS)
         mask = torch.from_numpy(np.array(mask)).float() / 255.0
         
-        # シミの部分を0, それ以外を1とする。
-        # 画像処理ソフトでシミを黒(0), 背景を白(255)で作成することを想定。
-        self.mask = (mask < 0.5).float().to(device)
-        self.mask_flat = self.mask.view(-1) # 1次元に展開したマスク
+        # シミの部分を0, それ以外を1とする
+        self.mask = (mask > 0.5).float().to(device)
+
+    def _reshape_and_apply_mask(self, x_flat):
+        # x_flatは (バッチサイズ, チャンネル*高さ*幅) の形状
+        batch_size = x_flat.shape[0]
+        
+        # 1. 4D画像テンソルに形状を戻す
+        x_4d = x_flat.view(batch_size, self.channels, self.image_size, self.image_size)
+        
+        # 2. マスクを適用する (maskは[H,W]なので、B,Cにブロードキャストされる)
+        masked_x_4d = x_4d * self.mask.unsqueeze(0).unsqueeze(0)
+        
+        # 3. 再び平坦化して返す
+        return masked_x_4d.view(batch_size, -1)
 
     def A(self, x):
-        """
-        順問題 (Forward Operator): y = Ax
-        クリーンな画像xから劣化画像yを生成する。
-        ここでは、マスクを乗算してシミ領域の情報を欠損させる。
-        """
-        # (バッチサイズ, チャンネル数, 高さ, 幅) の次元を合わせる
-        return x * self.mask.unsqueeze(0).unsqueeze(0)
+        """順問題: y = Ax"""
+        return self._reshape_and_apply_mask(x)
 
-    def A_T(self, y):
-        """
-        随伴作用素 (Adjoint Operator): x = A^T(y)
-        マスクを乗算するだけの単純な作用素の場合、A_TはAと同じになる。
-        """
-        return y * self.mask.unsqueeze(0).unsqueeze(0)
+    def At(self, y):
+        """随伴作用素: x = A^T(y)"""
+        return self._reshape_and_apply_mask(y)
 
     def A_pinv(self, y, alpha=0.0):
-        """
-        擬似逆作用素 (Pseudo-inverse Operator)
-        基本的にはA_Tと同じだが、安定性のための正則化項alphaを加えることもできる。
-        今回は単純な実装とする。
-        """
-        return y * self.mask.unsqueeze(0).unsqueeze(0)
+        """擬似逆作用素"""
+        return self._reshape_and_apply_mask(y)
 
-    # DDPG/DDRMのコードが `A_pinv_add_eta` のような別の名前を要求している場合、
-    # それに合わせてメソッド名や引数を調整する必要があるかもしれません。
-    # 例えば、ユーザーのコードベースには以下のようなメソッドが存在する可能性があります。
     def A_pinv_add_eta(self, y, eta):
-        """
-        DDPGのコードが要求する可能性のあるメソッド。
-        etaはノイズのレベルに応じた正則化項。
-        """
-        # 最も単純な実装は、etaを無視してA_pinvと同じ処理をすることです。
-        # より高度な実装では、etaを使って計算を安定させます。
-        return self.A_pinv(y)
+        """DDPGのコードが要求する可能性のあるメソッド"""
+        return self._reshape_and_apply_mask(y)

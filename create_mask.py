@@ -70,9 +70,9 @@ def generate_masks(image_path: str, stain_mask_output_path: str, text_mask_outpu
 
 if __name__ == '__main__':
     # --- ここを編集してください ---
-    # INPUT_IMAGE_PATH = "/home/ihpc/SSD/imoto/imotoddpg/makura/image/200017197_00008.jpg"
-    INPUT_IMAGE_PATH = r"C:\Users\yuuit\myproject\imotoddpg\200017197_00008.jpg"
-    OUTPUT_DIR = r"C:\Users\yuuit\myproject\imotoddpg\mask_output"
+    INPUT_IMAGE_PATH = 'makura1pretreat/200017197_00009/page_resize.png'
+    # INPUT_IMAGE_PATH = r"C:\Users\yuuit\myproject\imotoddpg\200017197_00008.jpg"
+    OUTPUT_DIR = "mask_output"
     # -------------------------
 
     # --- ファイル名を自動生成 ---

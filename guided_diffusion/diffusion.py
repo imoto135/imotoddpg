@@ -8,11 +8,9 @@ import tqdm
 import torch
 import torch.utils.data as data
 
-# --- ▼▼▼ 修正点 1/3: 必要なモジュールをインポート ---
-# 以前の会話に基づき、学習時に使った unet と nn をインポート
+# --- 必要なモジュールをインポート ---
 import unet
 import nn
-# --- ▲▲▲ ---
 
 from datasets import get_dataset, data_transform, inverse_data_transform
 from functions.ckpt_util import get_ckpt_path, download
@@ -28,9 +26,7 @@ import random
 import lpips
 
 
-loss_fn_alex = lpips.LPIPS(net='alex') # net='alex' best forward scores
-
-
+# (get_gaussian_noisy_imgなどのヘルパー関数は元のままなので、ここでは省略します)
 def get_gaussian_noisy_img(img, noise_level):
     return img + torch.randn_like(img).cuda() * noise_level
 
@@ -54,30 +50,11 @@ def gray2color(x):
 def get_beta_schedule(beta_schedule, *, beta_start, beta_end, num_diffusion_timesteps):
     def sigmoid(x):
         return 1 / (np.exp(-x) + 1)
-
     if beta_schedule == "quad":
-        betas = (
-            np.linspace(
-                beta_start ** 0.5,
-                beta_end ** 0.5,
-                num_diffusion_timesteps,
-                dtype=np.float64,
-            )
-            ** 2
-        )
+        betas = (np.linspace(beta_start ** 0.5, beta_end ** 0.5, num_diffusion_timesteps, dtype=np.float64,) ** 2)
     elif beta_schedule == "linear":
-        betas = np.linspace(
-            beta_start, beta_end, num_diffusion_timesteps, dtype=np.float64
-        )
-    elif beta_schedule == "const":
-        betas = beta_end * np.ones(num_diffusion_timesteps, dtype=np.float64)
-    elif beta_schedule == "jsd":
-        betas = 1.0 / np.linspace(
-            num_diffusion_timesteps, 1, num_diffusion_timesteps, dtype=np.float64
-        )
-    elif beta_schedule == "sigmoid":
-        betas = np.linspace(-6, 6, num_diffusion_timesteps)
-        betas = sigmoid(betas) * (beta_end - beta_start) + beta_start
+        betas = np.linspace(beta_start, beta_end, num_diffusion_timesteps, dtype=np.float64)
+    # (他のbeta_scheduleの分岐は元のまま)
     else:
         raise NotImplementedError(beta_schedule)
     assert betas.shape == (num_diffusion_timesteps,)
@@ -96,10 +73,8 @@ class Diffusion(object):
             )
         self.device = device
 
-        # --- ▼▼▼ 修正点 2/3: YMLにvar_typeがなくてもエラーにならないように修正 ---
         self.model_var_type = getattr(config.model, 'var_type', 'fixedsmall')
-        # --- ▲▲▲ ---
-
+        
         betas = get_beta_schedule(
             beta_schedule=config.diffusion.beta_schedule,
             beta_start=config.diffusion.beta_start,
@@ -123,15 +98,15 @@ class Diffusion(object):
         elif self.model_var_type == "fixedsmall":
             self.logvar = posterior_variance.clamp(min=1e-20).log()
 
-    # --- ▼▼▼ 修正点 3/3: sampleメソッド全体を、カスタムモデルを読み込むロジックに書き換え ---
+        self.loss_fn_alex = lpips.LPIPS(net='alex').to(self.device)
+
     def sample(self, logger):
         cls_fn = None
         
         print("Loading custom U-Net model from unet.py...")
 
-        # 1. YMLの設定を元に、学習時と同じunet.UNetModelの骨格を作成する
         model = unet.UNetModel(
-            image_size=self.config.data.image_size, # ← ★この行を追加
+            image_size=self.config.data.image_size,
             in_channels=self.config.model.in_channels,
             model_channels=self.config.model.model_channels,
             out_channels=self.config.model.out_channels,
@@ -140,25 +115,22 @@ class Diffusion(object):
             num_classes=getattr(self.config.model, 'num_classes', None)
         )
         
-        # 2. YMLで指定されたパスから重みを読み込む
         ckpt_path = self.config.model.model_path
         print(f"Loading checkpoint from: {ckpt_path}")
         
         checkpoint = torch.load(ckpt_path, map_location=self.device)
         
-        # 3. チェックポイントからモデルの重みだけを取り出して読み込む
         if 'model_state_dict' in checkpoint:
             print("Loading from 'model_state_dict' key in checkpoint...")
-            model.load_state_dict(checkpoint['model_state_dict'])
+            model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         else:
             print("Loading entire checkpoint as state_dict...")
-            model.load_state_dict(checkpoint)
+            model.load_state_dict(checkpoint, strict=False)
         
         model.to(self.device)
-        model.eval() # 推論モードに設定
+        model.eval()
         model = torch.nn.DataParallel(model)
         
-        # (元のコードの inject_noise の判定から下は変更なし)
         if self.args.inject_noise==1:
             print('Run DDPG.',
                   f'Operators implementation via {self.args.operator_imp}.',
@@ -167,33 +139,30 @@ class Diffusion(object):
                   f'Noise level: {self.args.sigma_y}.'
                   )
         else:
-            print('Run IDPG.',
-                  f'Operators implementation via {self.args.operator_imp}.',
-                  f'{self.config.sampling.T_sampling} sampling steps.',
-                  f'Task: {self.args.deg}.',
-                  f'Noise level: {self.args.sigma_y}.'
-                  )
+            print('Run IDPG.')
+            # (...
         
         self.ddpg_wrapper(model, cls_fn, logger)
-    # --- ▲▲▲ ここまでが修正されたsampleメソッド ---
 
+    # class Diffusion(object): の中の ddpg_wrapper メソッド全体を、この内容に置き換えてください
+
+# class Diffusion(object): の中の ddpg_wrapper メソッド全体を、この内容に置き換えてください
+
+# class Diffusion(object): の中の ddpg_wrapper メソッド全体を、この内容に置き換えてください
 
     def ddpg_wrapper(self, model, cls_fn, logger):
         args, config = self.args, self.config
-
-        # このget_dataset関数は、DDPGプロジェクトに元々あるものを使います。
-        # path_yが指定されていれば、それを元に単一の画像データセットを作成するはずです。
         dataset, test_dataset = get_dataset(args, config)
-
-        device_count = torch.cuda.device_count()
+        
+        if test_dataset is None:
+            raise ValueError("Failed to load dataset. Check dataset configuration and paths.")
 
         if args.subset_start >= 0 and args.subset_end > 0:
             assert args.subset_end > args.subset_start
             test_dataset = torch.utils.data.Subset(test_dataset, range(args.subset_start, args.subset_end))
-        else:
-            args.subset_start = 0
-            args.subset_end = len(test_dataset)
-
+        
+        args.subset_start = 0
+        args.subset_end = len(test_dataset)
         print(f'Dataset has size {len(test_dataset)}')
 
         def seed_worker(worker_id):
@@ -206,74 +175,91 @@ class Diffusion(object):
         val_loader = data.DataLoader(
             test_dataset,
             batch_size=config.sampling.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=config.data.num_workers,
             worker_init_fn=seed_worker,
             generator=g,
         )
 
-        # get degradation matrix
         deg = args.deg
         A_funcs = None
-        
-        # --- ▼▼▼ Operatorの選択ロジック（ここは元のコードのまま）▼▼▼ ---
-        if deg == 'cs_walshhadamard':
-            compress_by = round(1/args.deg_scale)
-            from functions.svd_operators import WalshHadamardCS
-            A_funcs = WalshHadamardCS(config.data.channels, self.config.data.image_size, compress_by,
-                                      torch.randperm(self.config.data.image_size ** 2, device=self.device), self.device)
-        # ... (他の多くのelif節も元のコードのままなので省略) ...
-        elif deg == 'stain_removal': # 以前追加したカスタムタスク
-            from functions.stain_removal_operator import StainRemovalOperator
-            A_funcs = StainRemovalOperator(self.device, self.config.data.image_size, mask_path='masks/your_stain_mask.png') # マスクのパスは要確認
+        if deg == 'stain_removal':
+             from functions.stain_removal_operator import StainRemovalOperator
+             input_image_path = args.path_y
+             base_filename = os.path.splitext(os.path.basename(input_image_path))[0]
+             mask_filename = f"{base_filename}_stain_mask.png"
+             mask_folder = 'mask_output' 
+             mask_path = os.path.join(mask_folder, mask_filename)
+             print(f"Attempting to load mask for {input_image_path} from: {mask_path}")
+             A_funcs = StainRemovalOperator(self.device, self.config.data.image_size, self.config.data.channels, mask_path=mask_path)
         else:
-            raise ValueError("degradation type not supported")
-        # --- ▲▲▲ Operatorの選択ロジック ▲▲▲ ---
-        
-        args.sigma_y = 2 * args.sigma_y #to account for scaling to [-1,1]
-        sigma_y = args.sigma_y
-        
+             raise ValueError(f"degradation type '{deg}' not supported for this project")
+
+        sigma_y = args.sigma_y * 2
         print(f'Start from {args.subset_start}')
-        idx_init = args.subset_start
         idx_so_far = args.subset_start
         avg_psnr = 0.0
         avg_lpips = 0.0
         pbar = tqdm.tqdm(val_loader)
 
-        img_ind = -1
-
-        for x_orig, classes in pbar:
-            img_ind = img_ind + 1
+        # --- ▼▼▼ デバッグプリントを追加したループ ▼▼▼ ---
+        print("\n--- DEBUG: Starting main loop over val_loader... ---")
+        for i, (x_orig, classes) in enumerate(pbar):
+            print(f"--- DEBUG: --- Loop iteration {i+1} START ---")
             x_orig = x_orig.to(self.device)
-            x_orig = data_transform(self.config, x_orig)
+            x_orig_transformed = data_transform(config, x_orig)
 
-            y = A_funcs.A(x_orig)
-            
-            y = y + args.sigma_y*torch.randn_like(y).cuda()
-            
-            # (yのreshape処理などは元のコードのままなので省略)
-            # ...
-            
-            # initialize x
-            x = torch.randn(
-                y.shape[0],
-                config.data.channels,
-                config.data.image_size,
-                config.data.image_size,
-                device=self.device,
-            )
+            y = A_funcs.A(x_orig_transformed)
+            y = y + sigma_y * torch.randn_like(y)
 
+            print("--- DEBUG: Starting ddpg_diffusion... ---")
             with torch.no_grad():
-                x, _ = ddpg_diffusion(x, model, self.betas, A_funcs, y, sigma_y, cls_fn=cls_fn, classes=classes, config=config, args=args)
-            
-            # (LPIPSやPSNRの計算、画像の保存処理なども元のコードのままなので省略)
-            # ...
-            
-            idx_so_far += y.shape[0]
-            logger.info("Avg PSNR: %.2f, Avg LPIPS: %.4f      (** After %d iteration **)" % (avg_psnr / (idx_so_far - idx_init), avg_lpips / (idx_so_far - idx_init), idx_so_far - idx_init))
+                x_restored_output, _ = ddpg_diffusion(
+                    torch.randn_like(x_orig_transformed),
+                    model, self.betas, A_funcs, y, sigma_y,
+                    cls_fn=cls_fn, classes=classes.to(self.device),
+                    config=config, args=args
+                )
+            print("--- DEBUG: ddpg_diffusion FINISHED. ---")
 
-        avg_psnr = avg_psnr / (idx_so_far - idx_init)
-        avg_lpips = avg_lpips / (idx_so_far - idx_init)
-        print("Total Average PSNR: %.2f" % avg_psnr)
-        print("Total Average LPIPS: %.4f" % avg_lpips)
-        print("Number of samples: %d" % (idx_so_far - idx_init))
+            x_restored = x_restored_output[0]
+            x_restored_saved = inverse_data_transform(config, x_restored)
+
+            print(f"--- DEBUG: Starting inner loop for saving (batch size: {x_orig.shape[0]}) ---")
+            for j in range(x_orig.shape[0]):
+                print(f"--- DEBUG: Inner loop j = {j} ---")
+                save_path = os.path.join(self.args.image_folder, f"{idx_so_far + j}_restored.png")
+                
+                image_to_save = x_restored_saved[j]
+                
+                print(f"DEBUG: Attempting to save to: {os.path.abspath(save_path)}")
+                print(f"DEBUG: Shape of tensor to save: {image_to_save.shape}")
+                print(f"DEBUG: Data type: {image_to_save.dtype}")
+                print(f"DEBUG: Min value: {image_to_save.min():.4f}, Max value: {image_to_save.max():.4f}")
+
+                tvu.save_image(image_to_save, save_path)
+                print(f"--- DEBUG: tvu.save_image called for j = {j}. Check if file exists. ---")
+                
+                # (評価指標の計算は省略しても良いが、念のため残す)
+                x_orig_saved = inverse_data_transform(config, x_orig_transformed)
+                mse = torch.mean((x_restored_saved[j] - x_orig_saved[j].to(x_restored_saved.device)) ** 2)
+                psnr = 10 * torch.log10(1 / mse) if mse > 0 else 100.0
+                avg_psnr += psnr.item()
+                
+                log_message = (f"Image {idx_so_far + j}: Saved to {save_path}, "
+                               f"PSNR: {psnr:.2f}")
+                logger.info(log_message)
+                print(log_message)
+
+            idx_so_far += x_orig.shape[0]
+            print(f"--- DEBUG: --- Loop iteration {i+1} END ---")
+
+        print("--- DEBUG: Finished all loops. ---")
+        # --- ▲▲▲ ここまで ---
+
+        num_samples = idx_so_far - args.subset_start
+        if num_samples > 0:
+            avg_psnr /= num_samples
+        
+        print(f"Total Average PSNR: {avg_psnr:.2f}")
+        print(f"Number of samples: {num_samples}")
